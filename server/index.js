@@ -13,7 +13,6 @@ let dbConnectionRetries = 5;
 
 while(dbConnectionRetries > 0) {
 	try {
-		
 	} catch (err) {
 
 		dbConnectionRetries -= 1;
