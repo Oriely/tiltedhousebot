@@ -11,15 +11,15 @@ require('dotenv').config();
 
 let dbConnectionRetries = 5;
 
-while(dbConnectionRetries > 0) {
-	try {
-	} catch (err) {
+// while(dbConnectionRetries > 0) {
+// 	try {
+// 	} catch (err) {
 
-		dbConnectionRetries -= 1;
-		console.log(err, `${dbConnectionRetries} retries left. Trying again.`);
-		await new Promise(res => setTimeout(res, 5000));
-	}
-}
+// 		dbConnectionRetries -= 1;
+// 		console.log(err, `${dbConnectionRetries} retries left. Trying again.`);
+// 		await new Promise(res => setTimeout(res, 5000));
+// 	}
+// }
 
 const client = new Client({
 	intents: [
