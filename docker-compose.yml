@@ -1,0 +1,36 @@
+# docker-compose.yml
+version: "3"
+services:
+  tiltedbot.frontend:
+    image: node:latest
+    ports:
+      - "52792:80"
+    environment:
+      NODE_ENV: development
+  tiltedbot.backend:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./client
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgres://user:pass@postgres:5432/db
+      NODE_ENV: development
+      PORT: 3000
+    ports:
+      - "52791:3000"
+    command: npm run dev
+    volumes:
+      - .:/app/
+      - /app/node_modules
+
+  tiltedbot.db:
+    image: postgres:10.4
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: db
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql/data
