@@ -10,7 +10,6 @@ const pg = require('pg');
 require('dotenv').config();
 
 let dbConnectionRetries = 5;
-
 // while(dbConnectionRetries > 0) {
 // 	try {
 // 	} catch (err) {
