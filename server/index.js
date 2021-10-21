@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const pg = require('pg');
 
-require('dotenv').config();
+require('dotenv').config({path: '.env.local'});
 /////
 // let dbConnectionRetries = 5;
 // while(dbConnectionRetries > 0) {

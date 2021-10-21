@@ -26,7 +26,7 @@ module.exports = {
 	async execute(interaction) {
 		download('https://cataas.com/cat', 'tmp/images/cat.jpg')
 		.then(image => {
-			const catAttachment = await new MessageAttachment().setFile(image);
+			const catAttachment = new MessageAttachment().setFile(image);
 			interaction.reply({files: [catAttachment]});
 		});
 	},
