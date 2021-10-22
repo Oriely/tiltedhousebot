@@ -7,4 +7,5 @@ npm-debug.log
 .gitignore
 README.md
 LICENSE
-.vscode
+.vscoded
+dist
