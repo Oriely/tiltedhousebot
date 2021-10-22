@@ -22,7 +22,7 @@ services:
     ports:
       - "52791:3000"
     volumes:
-      - ./server:/app/
+      - ./server:/usr/src/app
       - /app/node_modules
 
   tiltedbot.db:

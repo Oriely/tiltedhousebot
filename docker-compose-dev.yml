@@ -1,25 +1,26 @@
 # docker-compose.yml
 version: "3"
 services:
-  tiltedbotfrontend:
+  frontend:
     build:
-      dockerfile: ./client/Dockerfile.dev
-      context: ./
+      context: ./client
+      dockerfile: Dockerfile.dev
     ports:
-      - "3000:3000"
+      - "3000:8080"
     environment:
       - NODE_ENV="development"
     volumes:
-      - ./server:/app/
-      - /app/node_modules
+      - ./server:/usr/src/app
+      - /usr/src/app/node_modules
+      - ./logs/npm:/root/.npm/_logs
     depends_on:
-      - tiltedbotbackend
-  tiltedbotbackend:
+      - backend
+      - db
+  backend:
     build:
-      dockerfile: ./server/Dockerfile.dev
-      context: ./
-    depends_on:
-      - tiltedbotdb
+    # build from Dockerfile
+      context: ./server
+      dockerfile: Dockerfile.dev
     environment:
       - NODE_ENV=development
       - PORT=3000
@@ -30,10 +31,11 @@ services:
     ports:
       - "3005:3005"
     volumes:
-      - ./server:/app/
-      - /app/node_modules
+      - ./server:/usr/src/app
+      - /usr/src/app/node_modules
+      - ./logs/npm:/root/.npm/_logs
 
-  tiltedbotdb:
+  db:
     image: postgres:10.4
     ports:
       - "5432:5432"
