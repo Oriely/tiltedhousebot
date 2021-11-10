@@ -1,7 +1,7 @@
 # docker-compose.yml
 version: "3"
 services:
-  frontend:
+  frontend_prod:
     build:
       context: ./client
       dockerfile: Dockerfile.prod
@@ -14,19 +14,19 @@ services:
       - /usr/src/app/node_modules
       - ./logs/npm:/root/.npm/_logs
     depends_on:
-      - backend
-      - db
+      - backend_prod
+      - db_prod
   nginx:
     depends_on:
-      - backend
-      - frontend
+      - backend_prod
+      - frontend_prod
     restart: always
     build:
       dockerfile: Dockerfile
       context: ./nginx
     ports:
       - "3050:80"
-  backend:
+  backend_prod:
     build:
     # build from Dockerfile
       context: ./server
@@ -44,7 +44,7 @@ services:
       - ./server:/usr/src/app
       - /usr/src/app/node_modules
       - ./logs/npm:/root/.npm/_logs
-  db:
+  db_prod:
     image: postgres:10.4
     ports:
       - "5432:5432"

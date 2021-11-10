@@ -1,7 +1,10 @@
 # docker-compose.yml
 version: "3"
+
 services:
   frontend:
+    hostname: frontend
+    container_name: tb_frontend
     build:
       context: ./client
       dockerfile: Dockerfile.dev
@@ -10,38 +13,36 @@ services:
     environment:
       - NODE_ENV="development"
     volumes:
-      - ./server:/usr/src/app
+      - ./client:/usr/src/app
       - /usr/src/app/node_modules
       - ./logs/npm:/root/.npm/_logs
     depends_on:
       - backend
-      - db
+      - postgresql
   backend:
+    hostname: tb_backend
+    container_name: tb_backend
     build:
-    # build from Dockerfile
       context: ./server
       dockerfile: Dockerfile.dev
     environment:
       - NODE_ENV=development
       - PORT=3000
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=admin
-      - POSTGRES_DB=tiltedbot
-      - POSTGRES_PORT=5432
     ports:
       - "3005:3005"
     volumes:
       - ./server:/usr/src/app
       - /usr/src/app/node_modules
       - ./logs/npm:/root/.npm/_logs
+  postgresql:
+    hostname: tb_db
+    container_name: tb_db
 
-  db:
-    image: postgres:10.4
+    image: postgres:latest
     ports:
-      - "5432:5432"
+      - 5432:5432
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=admin
-      - POSTGRES_DB=tiltedbot
+      POSTGRES_USER: tiltedbot
+      POSTGRES_PASSWORD: postgres
     volumes:
       - ./postgresql/data:/var/lib/postgresql/data

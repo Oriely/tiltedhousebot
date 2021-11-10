@@ -24,6 +24,13 @@ module.exports = {
 		.setName('cat')
 		.setDescription('Random cat.'),
 	async execute(interaction) {
+
+		request('https://cataas.com/cat', (error, response, body) => {
+			if(error) {
+				return interaction.reply('CATAAS currently unavailable.');
+			}
+		})
+
 		download('https://cataas.com/cat', 'tmp/images/cat.jpg')
 		.then(image => {
 			const catAttachment = new MessageAttachment().setFile(image);

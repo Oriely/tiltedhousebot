@@ -24,17 +24,21 @@ module.exports = (client) => {
 
             for (const file of commandFiles) {
                 const command = require(`../${path}/${folder}/${file}`);
+                
+                if(!command.data) {
+                    console.error("\x1b[41m",`Missing command data in command file: ${file}`)
+                } else {
+                    console.log('- ', command.data.name + ` loaded.`)
+                    client.commands.set(command.data.name, command);
+                    client.commandArray.push(command.data.toJSON());
+                }
 
-                console.log('- ', command.data.name + ` loaded.`)
-
-                client.commands.set(command.data.name, command);
-                client.commandArray.push(command.data.toJSON());
 
             }
 
         }
 
-
+//
         const rest = new REST({ version: '9' }).setToken(process.env.TOKEN);
 
         (async () => {

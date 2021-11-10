@@ -9,9 +9,17 @@ module.exports = {
         if(!interaction.member.permissions.has('ADMINISTRATOR')) return await interaction.reply({content: 'You do not have permission to use this command.', ephemeral: true});
         const numOfMessagesToDelete = interaction.options.getInteger('number');
 
-		await interaction.channel.messages.fetch({ limit: numOfMessagesToDelete }).then(messages => {     
-			interaction.reply(`Deleted ${messages.size} messages`);
-			interaction.channel.bulkDelete(messages);
-		});
+		await interaction.channel.messages.fetch({ limit: numOfMessagesToDelete }).then(messages => {   
+			interaction.channel.bulkDelete(messages)
+			.then((test) => {
+				interaction.reply(`Deleted ${messages.size} messages`)
+				.then((msg) => {
+					console.log(msg);
+				});
+			}).catch(err => {
+				console.log(err)
+				interaction.reply(`Something went wrong trying to delete the message${messages.size > 1 ? 's' : ''}`);
+			});
+		})
 	},
 };
