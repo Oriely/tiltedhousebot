@@ -13,7 +13,7 @@ services:
       - /usr/src/app/node_modules
       - ./logs/npm:/root/.npm/_logs
     depends_on:
-      - tb_backend_prod 
+      - tb_backend
       - postgresql
   tb_nginx:
     container_name: tb_nginx
