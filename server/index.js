@@ -63,8 +63,9 @@ app_api.get('/api', (req, res) => {
 	client.handleEvents(events, './events');
 	client.handleCommands(commandFolders, './commands');
 
-	const token = process.env.NODE_ENV === "production" ? process.env.TOKEN : process.env.TEST_BOT_TOKEN;
+	const token = process.env.NODE_ENV == "production" ? process.env.TOKEN : process.env.TEST_BOT_TOKEN;
 	console.log('token: ', token);
+	console.log('node_env: ', process.env.NODE_ENV )
 	app_api.listen(process.env.PORT, () => {
 		console.log('API Listening on port ' + process.env.PORT)
 	});

@@ -38,9 +38,9 @@ module.exports = (client) => {
 
         }
 
-        const token = process.env.NODE_ENV === "production" ? process.env.TOKEN : process.env.TEST_BOT_TOKEN;
-        const guildId = process.env.NODE_ENV === "production" ? process.env.TOKEN : process.env.TEST_BOT_TOKEN;
-        const clientId = process.env.NODE_ENV === "production" ? process.env.CLIENT_ID : process.env.TEST_BOT_CLIENT_ID;
+        const token = process.env.NODE_ENV == "production" ? process.env.TOKEN : process.env.TEST_BOT_TOKEN;
+        const guildId = process.env.NODE_ENV == "production" ? process.env.TOKEN : process.env.TEST_BOT_TOKEN;
+        const clientId = process.env.NODE_ENV == "production" ? process.env.CLIENT_ID : process.env.TEST_BOT_CLIENT_ID;
 
         const rest = new REST({ version: '9' }).setToken(token);
         
