@@ -4,7 +4,7 @@ RUN apk add --update --no-cache make g++ jpeg-dev cairo-dev giflib-dev pango-dev
 
 WORKDIR /usr/src/app
 
-COPY ./package*.json .
+COPY ./package*.json ./
 
 RUN npm i -G nodemon
 
