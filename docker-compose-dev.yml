@@ -2,14 +2,12 @@
 version: "3"
 
 services:
-  frontend:
-    hostname: frontend
-    container_name: tb_frontend
+  tb_frontend:
     build:
       context: ./client
       dockerfile: Dockerfile.dev
     ports:
-      - "3000:8080"
+      - "3000:3000"
     environment:
       - NODE_ENV="development"
     volumes:
@@ -17,27 +15,38 @@ services:
       - /usr/src/app/node_modules
       - ./logs/npm:/root/.npm/_logs
     depends_on:
-      - backend
-      - postgresql
-  backend:
-    hostname: tb_backend
-    container_name: tb_backend
+      - tb_backend
+    restart: always
+  tb_nginx:
+    container_name: tb_nginx
+    restart: always
+    depends_on:
+      - tb_backend
+      - tb_frontend
+    restart: always
+    build:
+      dockerfile: Dockerfile
+      context: ./nginx
+    ports:
+      - "20001:80"
+  tb_backend:
+    restart: always
     build:
       context: ./server
       dockerfile: Dockerfile.dev
     environment:
       - NODE_ENV=development
-      - PORT=3000
+      - PORT=5000
     ports:
-      - "3005:3005"
+      - "5000:5000"
     volumes:
       - ./server:/usr/src/app
       - /usr/src/app/node_modules
       - ./logs/npm:/root/.npm/_logs
+    depends_on:
+      - postgresql
   postgresql:
-    hostname: tb_db
     container_name: tb_db
-
     image: postgres:latest
     ports:
       - 5432:5432

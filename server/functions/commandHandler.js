@@ -38,15 +38,18 @@ module.exports = (client) => {
 
         }
 
-//
-        const rest = new REST({ version: '9' }).setToken(process.env.TOKEN);
+        const token = process.env.NODE_ENV === "production" ? process.env.TOKEN : process.env.TEST_BOT_TOKEN;
+        const guildId = process.env.NODE_ENV === "production" ? process.env.TOKEN : process.env.TEST_BOT_TOKEN;
+        const clientId = process.env.NODE_ENV === "production" ? process.env.CLIENT_ID : process.env.TEST_BOT_CLIENT_ID;
 
+        const rest = new REST({ version: '9' }).setToken(token);
+        
         (async () => {
             try {
             console.log('Started refreshing application (/) commands.');
 
             await rest.put(
-            Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+            Routes.applicationGuildCommands(clientId, process.env.GUILD_ID),
             { body: client.commandArray },
             );
 

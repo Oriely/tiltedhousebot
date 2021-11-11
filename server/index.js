@@ -7,6 +7,9 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./database/db');
 const { Economy } = require('./database/economy');
+const express = require('express')
+const app_api = express()
+
 
 require('dotenv').config({path: '.env.local'});
 const client = new Client({
@@ -29,6 +32,22 @@ const functions = fs.readdirSync('./functions').filter(file => file.endsWith('.j
 const events = fs.readdirSync('./events').filter(file => file.endsWith('.js'));
 const commandFolders = fs.readdirSync('./commands');
 
+app_api.get('/', (req, res) => {
+	console.log(req);
+	res.send({
+		test: 'test'
+	});		
+});
+
+app_api.get('/api', (req, res) => {
+	console.log(req);
+	res.send({
+		test: 'test'
+	});		
+});
+
+
+
 (async () => {
 
 
@@ -45,7 +64,12 @@ const commandFolders = fs.readdirSync('./commands');
 	client.handleCommands(commandFolders, './commands');
 
 	const token = process.env.NODE_ENV === "production" ? process.env.TOKEN : process.env.TEST_BOT_TOKEN;
-	client.login(process.env.TOKEN);
+	console.log('token: ', token);
+	app_api.listen(process.env.PORT, () => {
+		console.log('API Listening on port ' + process.env.PORT)
+	});
+
+	client.login(token);
 }
 
 )();

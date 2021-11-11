@@ -1,56 +1,53 @@
 # docker-compose.yml
 version: "3"
 services:
-  frontend_prod:
+  tb_frontend:
+    container_name: tb_frontend
     build:
       context: ./client
       dockerfile: Dockerfile.prod
-    ports:
-      - "3000:8080"
     environment:
       - NODE_ENV="production"
     volumes:
-      - ./server:/usr/src/app
+      - ./client:/usr/src/app
       - /usr/src/app/node_modules
       - ./logs/npm:/root/.npm/_logs
     depends_on:
-      - backend_prod
-      - db_prod
-  nginx:
+      - tb_backend_prod 
+      - postgresql
+  tb_nginx:
+    container_name: tb_nginx
     depends_on:
-      - backend_prod
-      - frontend_prod
+      - tb_backend
+      - tb_frontend
     restart: always
     build:
       dockerfile: Dockerfile
       context: ./nginx
     ports:
-      - "3050:80"
-  backend_prod:
+      - "20001:80"
+  tb_backend:
+    container_name: tb_backend
     build:
-    # build from Dockerfile
       context: ./server
       dockerfile: Dockerfile.prod
     environment:
       - NODE_ENV="production"
-      - PORT=3000
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=admin
-      - POSTGRES_DB=tiltedbot
-      - POSTGRES_PORT=5432
+      - PORT=5000
     ports:
-      - "3005:3005"
+      - "5000:5000"
     volumes:
       - ./server:/usr/src/app
       - /usr/src/app/node_modules
       - ./logs/npm:/root/.npm/_logs
-  db_prod:
-    image: postgres:10.4
+    restart: always
+  postgresql:
+    container_name: tb_db
+    image: postgres:latest
     ports:
-      - "5432:5432"
+      - 5432:5432
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=admin
-      - POSTGRES_DB=tiltedbot
+      POSTGRES_USER: tiltedbot
+      POSTGRES_PASSWORD: postgres
     volumes:
       - ./postgresql/data:/var/lib/postgresql/data
