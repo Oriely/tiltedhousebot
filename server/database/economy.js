@@ -7,28 +7,28 @@ class Economy {
 
     async add(userId, amount) {
         return new Promise((resolve, reject) => {
-            try{
-                db.connection.query(`
+            db.connection.query(`
                     UPDATE Users SET balance = balance + ${amount}
                     WHERE userId = '${userId}'
                 `)
-                .then(resolve(true));
-            } catch (error) {
-                reject(error);
-            }
+            .then(resolve(true))
+            .catch((err) => {
+                reject(err);
+            });
         }) 
     }
 
     async subtract(userId, amount){
         return new Promise( async (resolve, reject) => {
-            try {
-                const currentBalance = await this.balance(userId);
-                if(currentBalance - amount < 0) reject(false); 
-                db.connection.query(`UPDATE Users SET balance = balance - ${amount} WHERE userId = '${userId}'`);
+            const currentBalance = await this.balance(userId);
+            if(currentBalance - amount < 0) reject(false); 
+            db.connection.query(`UPDATE Users SET balance = balance - ${amount} WHERE userId = '${userId}'`)
+            .then(() => {
                 resolve(true);
-            } catch(error) {
-                reject(error)
-            }
+            })
+            .catch((err) => {
+                reject(err)
+            });
         });
     }
 
