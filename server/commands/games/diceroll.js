@@ -2,7 +2,6 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { Discord, MessageAttachment,  MessageEmbed} = require('discord.js');
 const fs = require('fs');
 const { resolve } = require('path');
-const economy = require('../../database/economy');
 const diceImagesDir = fs.readdirSync('./assets/images/dice');
 const diceEmbeds = [];
 
@@ -27,12 +26,13 @@ module.exports = {
         const selectedDiceRoll = interaction.options.getInteger('diceroll');
         if(selectedDiceRoll > 6 || selectedDiceRoll < 1) return interaction.reply('You have to pick a number between 1 and 6');
 
-        let currentBalance = await economy.balance(messageAuthor);
-        if(currentBalance - bet < 0) return interaction.reply(`You do not have balance to bet ${bet}, missing ${Math.abs(currentBalance - bet)}`)
+        // let currentBalance = await economy.balance(messageAuthor);
+        // if(currentBalance - bet < 0) return interaction.reply(`You do not have balance to bet ${bet}, missing ${Math.abs(currentBalance - bet)}`)
         
-        await economy.subtract(messageAuthor, bet);
+        // await economy.subtract(messageAuthor, bet);
 
-        currentBalance = await economy.balance(messageAuthor);
+        // currentBalance = await economy.balance(messageAuthor);
+
         const roll = Math.round(Math.random() * 5) + 1;
         const diceEmbed = diceEmbeds[roll - 1].attachment;
 
@@ -43,7 +43,7 @@ module.exports = {
             .setDescription(`Current balance: ${currentBalance}`)
             .setThumbnail(`attachment://${roll}.png`);
 
-            await economy.add(messageAuthor, bet * 6);
+            // await economy.add(messageAuthor, bet * 6);
 
             return interaction.channel.send({ embeds: [embed], files:[diceEmbed]});
         } else {

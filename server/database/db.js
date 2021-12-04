@@ -1,42 +1,34 @@
 
 const { Pool } = require('pg');
-
-const pool = new Pool({
-	host: 'postgresql',
-	database: 'tiltedbot',
-	user: 'tiltedbot',
-	password: 'postgres',
+const logger = require('../utils/Logger');
+const dbPool = new Pool({
+	host: process.env.PG_HOST,
+	database: process.env.PG_DB,
+	user: process.env.PG_USER,
+	password: process.env.PG_PASSWORD,
 	port: 5432
-
 });
 
 class Database {
-    constructor() {
+
+    constructor(pool) {
+        this.pool = pool;
         this.connection = null;
         this.retries = 5;
         this.retryTimeout = 5000; // How many ms to wait to retry
+        this.connected = false;
+
     }
-    async tryconnect() {
+    
+    async connect() {
+        if(this.connected) return;
         while(this.retries > 0) {
-                try {
-                    await pool.connect().then( (connection) => {
-                        this.connection = connection;
-                        this.retries = 5;
-                        console.log('Connected to database');
-                        return connection;
-                    });
-                    break;
-                } catch (err) {
-                        this.retries--;
-                    if(this.retries === 0)  {
-                        console.log(`Could not establish connection to database.`)
-                        throw err;
-                    }
-                    console.log(err, `${this.retries} retries left. Trying again.`);
-                    await new Promise(res => setTimeout(res, 2000));
-                }
+            --this.retries
+
         }
     }
+    
+
 
     getCon() {
         if(!connection) return
@@ -47,4 +39,4 @@ class Database {
     }
 }
 
-module.exports = new Database;
+module.exports = new Database(dbPool);

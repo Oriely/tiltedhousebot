@@ -1,48 +1,57 @@
-const db = require('../database/db');
+// const db = require('../database/db');
 
-class Economy {
-    costructor(db) {
+// class Economy {
+//     costructor(db) {
 
-    }
+//     }
 
-    async add(userId, amount) {
-        return new Promise((resolve, reject) => {
-            db.connection.query(`
-                    UPDATE Users SET balance = balance + ${amount}
-                    WHERE userId = '${userId}'
-                `)
-            .then(resolve(true))
-            .catch((err) => {
-                reject(err);
-            });
-        }) 
-    }
+//     async add(userId, amount) {
+//         return new Promise((resolve, reject) => {
+//             db.connection.query(`
+//                     UPDATE Users SET balance = balance + ${amount}
+//                     WHERE userId = '${userId}'
+//                 `)
+//             .then(resolve(true))
+//             .catch((err) => {
+//                 reject(err);
+//             });
+//         }) 
+//     }
 
-    async subtract(userId, amount){
-        return new Promise( async (resolve, reject) => {
-            const currentBalance = await this.balance(userId);
-            if(currentBalance - amount < 0) reject(false); 
-            db.connection.query(`UPDATE Users SET balance = balance - ${amount} WHERE userId = '${userId}'`)
-            .then(() => {
-                resolve(true);
-            })
-            .catch((err) => {
-                reject(err)
-            });
-        });
-    }
+//     async subtract(userId, amount){
+//         return new Promise( async (resolve, reject) => {
+//             const currentBalance = await this.balance(userId);
+//             if(currentBalance - amount < 0) reject('Not enough balance'); 
+//             db.connection.query(`UPDATE Users SET balance = balance - ${amount} WHERE userId = '${userId}'`, (err, res) => {
+//                 if(err) {
 
-    async balance(userId) {
-        return new Promise(async (resolve, reject) => {
-            try{
-                const currentBalance = await db.connection.query(`SELECT balance FROM Users WHERE userId = '${userId}'`);
-                if(!currentBalance.rows.length === 0) reject(false);
-                resolve(currentBalance.rows[0].balance);
-            } catch(error) {
-                reject(error);
-            }
-        });
-    }
-}
+//                 }
+//             })
+            
+//         });
+//     }
 
-module.exports = new Economy(db);
+//     async balance(userId) {
+//         return new Promise(async (resolve, reject) => {
+//             try{
+//                 const currentBalance = await db.connection.query(`SELECT balance FROM Users WHERE userId = '${userId}'`);
+//                 if(!currentBalance.rows.length === 0) reject(false);
+//                 resolve(currentBalance.rows[0].balance);
+//             } catch(error) {
+//                 reject(error);
+//             }
+//         });
+//     }
+
+//     checkIfUserExists() {
+//         return new Promise( async (resolve, reject) => {
+//             db.connection.query(`SELECT balance FROM Users WHERE userId = '${userId}'`)
+//             .then()
+//             .catch((err) => {
+//                 reject(console.log(err));
+//             });
+//         })
+//     }
+// }
+
+// module.exports = new Economy(db);

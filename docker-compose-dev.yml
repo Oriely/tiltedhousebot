@@ -3,6 +3,7 @@ version: "3"
 
 services:
   tb_frontend:
+    container_name: tb_frontend_dev
     build:
       context: ./client
       dockerfile: Dockerfile.dev
@@ -18,7 +19,7 @@ services:
       - tb_backend
     restart: always
   tb_nginx:
-    container_name: tb_nginx
+    container_name: tb_nginx_dev
     restart: always
     depends_on:
       - tb_backend
@@ -30,6 +31,7 @@ services:
     ports:
       - "20001:80"
   tb_backend:
+    container_name: tb_backend_dev
     restart: always
     build:
       context: ./server
@@ -46,7 +48,7 @@ services:
     depends_on:
       - postgresql
   postgresql:
-    container_name: tb_db
+    container_name: tb_db_dev
     image: postgres:latest
     ports:
       - 5432:5432

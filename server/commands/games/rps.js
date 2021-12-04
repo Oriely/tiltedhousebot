@@ -1,6 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageAttachment,  MessageEmbed} = require('discord.js');
-const economy = require('../../database/economy');
 const {registerFont, createCanvas, loadImage} = require('canvas');
 
 
@@ -131,7 +130,7 @@ module.exports = {
                         }
 
                     })
-                    .catch((collected) => {
+                    .catch(() => {
                         interaction.followUp(`<@${player2.user.id}> did not repsond in time.`);
                     });
             });
@@ -153,17 +152,17 @@ module.exports = {
 
                         collected.first().delete();
 
-                        economy.subtract(player1.user.id, bet);
-                        economy.subtract(player2.user.id, bet);
+                        // economy.subtract(player1.user.id, bet);
+                        // economy.subtract(player2.user.id, bet);
 
                         if(rps.get(player1.choice) == player2.choice) {
-                            economy.add(player2.user.id, bet * 2);
+                            // economy.add(player2.user.id, bet * 2);
                             interaction.channel.send(`<@${player2.user.id}> wins`);
 
                         } else if (player1.choice == player2.choice){
                             interaction.channel.send(`Its a tie.`);
-                            economy.add(player1.user.id, bet);
-                            economy.add(player2.user.id, bet);
+                            // economy.add(player1.user.id, bet);
+                            // economy.add(player2.user.id, bet);
                         } else {
                             economy.add(player1.user.id, bet * 2);
                             interaction.channel.send(`<@${player1.user.id}> wins`);
@@ -178,7 +177,7 @@ module.exports = {
 
                     })
                     
-                    .catch((error) => {
+                    .catch(() => {
                         interaction.followUp(`<@${player2.id}> choose hand in time.`);
                     });
                 })

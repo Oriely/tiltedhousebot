@@ -4,47 +4,232 @@ const { OpusEncoder } = require('@discordjs/opus');
 const { MessageEmbed } = require('discord.js');
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, AudioPlayerStatus, createAudioResource, VoiceConnectionStatus} = require('@discordjs/voice');
 const yt_search = require('yt-search');
-const { Queue } = require('../../includes/music');
-
+const { Queue, Track, createYTTrack, createRadioTrack } = require('../../includes/music');
+const prism = require('prism-media')
 let collectorRunning =  false;
+const http = require('http');
+const { connect } = require('http2');
 
 async function videoFinder(query) {
     const videoResult =  await yt_search(query);
     return (videoResult.videos.length > 1) ? videoResult.videos.slice(0, 5) : null;
 }
 
-class YouTube {
-    constructor() {
-        
+const songStateMethods = (interaction)=> {
+    return {
+        onStart(track) {
+            
+            console.log(track)
+            const embed = new MessageEmbed()
+            .setTitle('Now playing')
+            .setDescription(track.title)
+            .setThumbnail(track.thumbnail_url)
+            .setColor('#1B1C31');
+    
+            interaction.followUp({embeds: [embed]}).catch(console.warn);
+        },
+        onFinish(track) {
+            const embed = new MessageEmbed()
+            .setTitle('Now finished')
+            .setDescription(track.title)
+            .setThumbnail(track.thumbnail_url)
+            .setColor('#1B1C31');
+            
+            interaction.followUp({embeds: [embed]}).catch(console.warn);
+        },
+        onError(error) {
+            console.warn(error);
+            interaction.followUp({ content: `Error: ${error}`, ephemeral: true }).catch(console.warn);
+        }
     }
 }
 
-async function sendSongEmbed( textChannel,title, desc, thumb ) {
-    const embed = new MessageEmbed()
-    .setTitle(title)
-    .setDescription(desc)
-    .setThumbnail(thumb)
-    .setColor('#1B1C31');
-
-    await textChannel.send({embeds: [embed]});
+const tryToMoveChannel = async (interaction, connection) => {
+    let botVoiceChannel = await interaction.guild.channels.cache.get(connection.joinConfig.channelId);
+    if(botVoiceChannel.id == interaction.member.voice.channel.id) return;
+    if(botVoiceChannel.members.size === 1) {
+        interaction.guild.me.voice.setChannel(interaction.member.voice.channel.id);
+    } else if(botVoiceChannel.members.size > 1) {   
+        interaction.followUp('Someone is using me in another channel.');
+    }
+    
 }
 
-async function getSong(interaction, args) {
-    return new Promise(async (resolve, reject) => {
+async function sendSongEmbed( textChannel,title, desc, thumb ) {
 
-            let reYTurl = new RegExp('^(https?\:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$');
+}
 
-            if(ytdl.validateURL(args) && reYTurl.test(args)) {
-                const songInfo = await ytdl.getInfo(args, {downloadURL: true});
-                resolve({
-                    title: songInfo.videoDetails.title,
-                    url: args,  
-                    thumbnail_url: songInfo.player_response.videoDetails.thumbnail.thumbnails[0].url
-                }); 
+module.exports = {
+	data: new SlashCommandBuilder()
+		.setName('musicplayer')
+		.setDescription('Used to play music.')
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('connect')
+                .setDescription('Used to connect bot to channel you are in'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('yt')
+                .setDescription('YouTube link to play')
+                .addStringOption(option => option.setName('yturl').setDescription('YouTube video url.').setRequired(true)))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('search')
+                .setDescription('Search youtube for songs.')
+                .addStringOption(option => option.setName('query').setDescription('What you want to search for').setRequired(true)))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('radio')
+                .setDescription('Play radio.'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('queue')
+                .setDescription('Lists the songs in the queue'))
+        
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('shuffle')
+                .setDescription('Shuffles the queue.'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('skip')
+                .setDescription('Skip the current track.'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('stop')
+                .setDescription('Stops the music player'))
+
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('nowplaying')
+                .setDescription('Sends current song being played.'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('pause')
+                .setDescription('Pause the music player.'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('resume')
+                .setDescription('Resume the music player.'))
+        ,
+	async execute(interaction, client) {
+        let connection = getVoiceConnection(interaction.guildId);
+        let interactionChannel = interaction.channel;
+        let channel = interaction.channel;
+        let voiceChannel = interaction.member.voice.channel;
+        const serverQueue = client.guildQueues.get(interaction.guildId);
+        const { afkChannelId }= await interaction.guild.channels.guild;
+
+        if(interaction.options.getSubcommand() === 'connect') {
+             
+            if(interaction.member.voice.channelId == afkChannelId) return  interaction.reply('You cant be in the afk channel.');
+            
+            if(!connection) {
+                try {
+                    connection = await joinVoiceChannel({
+                        channelId: interaction.member.voice.channel.id,
+                        guildId: interaction.channel.guild.id,
+                        adapterCreator: interaction.channel.guild.voiceAdapterCreator,
+                    });
+                    interaction.reply('Connected to your channel.');
+                } catch (err) {
+                    console.warn(err);
+                    interaction.reply('Something went wrong when trying to connect.')
+                }
+            } else tryToMoveChannel(interaction, connection, serverQueue) 
+
+        }
+        
+        if(interaction.options.getSubcommand() === 'yt') {
+            
+            await interaction.deferReply();
+            
+            if(!voiceChannel) return interaction.reply('You have to be in a voice channel to use this command.');
+            if(interaction.member.voice.channelId == afkChannelId) return  interaction.reply('You cant be in the afk channel.');
+            
+            if(!connection) {
+                try {
+                    connection = await joinVoiceChannel({
+                        channelId: interaction.member.voice.channel.id,
+                        guildId: interaction.channel.guild.id,
+                        adapterCreator: interaction.channel.guild.voiceAdapterCreator,
+                    });
+                    interaction.followUp('Connected to your channel.');
+                } catch (err) {
+                    console.warn(err);
+                    interaction.followUp('Something went wrong when trying to connect.')
+                }
+            } else tryToMoveChannel(interaction, connection, serverQueue) 
+
+            let YouTubeURLRegEx = new RegExp('^(https?\:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$');
+            let url = interaction.options.getString('yturl');
+
+            if(!ytdl.validateURL(url) && !YouTubeURLRegEx.test(url)) return interaction.reply('Not a valid youtube link.')
+            
+            if(!serverQueue) {
+                const queue = new Queue({
+                    voiceConnection: connection,
+                    voiceChannel: voiceChannel,
+                    interactionTextChannel: interactionChannel,
+                });
+                client.guildQueues.set(interaction.guildId, queue);
+                try {
+                    const track = await createYTTrack(url, songStateMethods(interaction));
+                    
+                    queue.enqueue(track);
+                    const embed = new MessageEmbed()
+                        .setTitle('Added song to the queue')
+                        .setDescription(track.title)
+                        .setThumbnail(track.thumbnail_url)
+                        .setColor('#1B1C31');
+                    
+                    return interaction.followUp({embeds: [embed]});
+                    
+                } catch(err) {
+                    console.warn(err);
+                    client.guildQueues.delete(interaction.guildId);
+                    return interaction.followUp('There was an error connecting!');
+                }
+            } else {
+                console.log('add song to queue')
+                // push song to queue    
+                const track = await createYTTrack(url, songStateMethods(interaction));
+                serverQueue.enqueue(track);
+                const embed = new MessageEmbed()
+                    .setTitle('Added song to the queue')
+                    .setDescription(track.title)
+                    .setThumbnail(track.thumbnail_url)
+                    .setColor('#1B1C31');
+                
+                return interaction.followUp({embeds: [embed]});
             }
-            const videos = await videoFinder(args);
+        }
 
-            if(videos) {
+
+        if(interaction.options.getSubcommand() === 'search') {
+           
+            if(!voiceChannel) return interaction.reply('You have to be in a voice channel to use this command.');
+            if(interaction.member.voice.channelId == afkChannelId) return  interaction.reply('You cant be in the afk channel.');
+
+            if(!connection) {
+                try {
+                    connection = await joinVoiceChannel({
+                        channelId: interaction.member.voice.channel.id,
+                        guildId: interaction.channel.guild.id,
+                        adapterCreator: interaction.channel.guild.voiceAdapterCreator,
+                    });
+                    interaction.followUp('Connected to your channel.');
+                } catch (err) {
+                    console.warn(err);
+                    interaction.followUp('Something went wrong when trying to connect.')
+                }
+            } else tryToMoveChannel(interaction, connection, serverQueue) 
+
+            const searchQuery = interaction.options.getString('query');
+
+            const videos = await videoFinder(searchQuery);
+
+            if(!videos) return interaction.followUp('Could find any videos.');
                 let videoFields = '';
                 for(let x = 0; x < videos.length; x++ ) {
                     videoFields += `${x + 1}. ${videos[x].title}\n`;
@@ -55,12 +240,11 @@ async function getSong(interaction, args) {
                 .setDescription(videoFields)
                 .setColor('#1B1C31');
 
-
                 let selectedVideo = null;
                 const filter = response => {
                     return videos.some((video, index) => {
                         if(index == parseInt(response.content) -1){
-                            selectedVideo = index;
+                        selectedVideo = index;
                             return true;
                         }   
                         return false;
@@ -69,140 +253,220 @@ async function getSong(interaction, args) {
 
 
                 // TODO fix bug where you are able to use play command again before collector is finished
-                if(collectorRunning) return;
-                interaction.reply({embeds:[selectVideoEmbed], code:'js'}, { fetchReply: true })
-                    .then(() => {
-                        
-                        interaction.channel.awaitMessages({ filter, max: 1, time: 10000, errors: ['time'] })
-                            .then(collected => {
-                                const songData = {
-                                    title: videos[selectedVideo].title,
-                                    url: videos[selectedVideo].url,
-                                    thumbnail_url: videos[selectedVideo].thumbnail,
-                                    duration: videos[selectedVideo].duration.timestamp
+                client.userStates.get(interaction.user.id).isCollecting = true;
+                console.log('testbefore')
+                interaction.reply({embeds:[selectVideoEmbed], code:'js'}, { fetchReply: true }).then(() => {
+                    interaction.channel.awaitMessages({ filter, max: 1, time: 10000, errors: ['time'] })
+                        .then(async collected => {
+                            if(!serverQueue) {
+                                try {
+                                    const queue = new Queue({
+                                        voiceConnection: connection,
+                                        voiceChannel: voiceChannel,
+                                        interactionTextChannel: interactionChannel,
+                                    });
+                                    client.guildQueues.set(interaction.guildId, queue);
+
+                                    const track = await createYTTrack(videos[selectedVideo].url, songStateMethods(interaction));
+                                    queue.enqueue(track);
+                                    
+                                    // songPlayer(client, interaction.guildId, queue.songs[0]);ø.
+                                    const embed = new MessageEmbed()
+
+                                    .setTitle('Added song to the queue')
+                                    .setDescription(track.title)
+                                    .setThumbnail(track.thumbnail_url)
+                                    .setColor('#1B1C31');
+                                    
+                                    return interaction.followUp({embeds: [embed]});
+                                    
+          
+                                } catch(err) {
+                                    client.guildQueues.delete(interaction.guildId);
+                                    return interaction.followUp('There was an error connecting!');
                                 }
-
-                                interaction.followUp(`You selected ${videos[selectedVideo].title}`);
-                                resolve(songData);
-
-                            })
-                            .catch(collected => {
-                                collectorRunning = false;
-                                interaction.followUp('You didnt selected a video in time, try again.');
-                            });
+                                
+                        } else {
+                            // push song to queue    
+                            const track = await createYTTrack(url, songStateMethods(interaction));
+                            queue.enqueue(track);
+                            
+                            
+                            const embed = new MessageEmbed()
+                            
+                            .setTitle('Added song to the queue')
+                            .setDescription(track.title)
+                            .setThumbnail(track.thumbnail_url)
+                            .setColor('#1B1C31');
+                            
+                            interaction.followUp({embeds: [embed]});
+                            
+                        }
+                            
+                        interaction.followUp(`You selected ${videos[selectedVideo].title}`);
+                        client.userStates.get(interaction.user.id).isCollecting = false;
+                        
+                    })
+                    .catch(collected => {
+                        client.userStates.get(interaction.user.id).isCollecting = false;
+                        interaction.followUp('You didnt selected a video in time, try again.');
                     });
+                });
             
-            } else {
-                reject(null);
-            }
-    });
-}
+        }
+
+        if(interaction.options.getSubcommand() === 'skip') {
+            if(!voiceChannel) return interaction.reply('You have to be in a voice channel to use this command.');
+            if(connection.joinConfig.channelId != voiceChannel.id) return interaction.reply('You have to be in the same channel as me.');
+            if(!serverQueue) return await interaction.reply('Bot is not playing music.');
+            
+            
+            console.log('skip')
+            serverQueue.player.stop();
+            await interaction.reply('Skipped song!');
+        }
 
 
-async function songPlayer(client, guildId, song) {
-    const serverQueue = client.guildQueues.get(guildId);
+        if(interaction.options.getSubcommand() === 'nowplaying') {
+            
+            if(!serverQueue) return await interaction.reply('Bot is not playing music.');
 
-    if(!song) {
-        console.log(serverQueue);
-        serverQueue.connection.destroy();
-        serverQueue.textChannel.send('No more songs to play. Leaving channel.');
-        client.guildQueues.delete(guildId);
-        return;
-    }
-
-    const ytdlstream = await ytdl(song.url, {
-        filter: "audioonly",
-        opusEncoded: true,
-        bitrate: 320,
-        quality: "highestaudio",
-        liveBuffer: 40000,
-        highWaterMark: 1 << 25, 
-
-    });
-
-    let audioresource = createAudioResource(ytdlstream, {inlineVolume: true});
-
-    audioresource.volume.setVolume(0.1);
+            const currentSong = serverQueue.nowPlaying();
     
-    serverQueue.connection.subscribe(serverQueue.player);
-
-    serverQueue.currentSong = song;
-
-    serverQueue.songs.shift();
-
-    serverQueue.player.play(audioresource);
-
-    sendSongEmbed(serverQueue.textChannel, 'Now playing:', song.title, song.thumbnail_url);
-
-    serverQueue.player.once(AudioPlayerStatus.Idle, () => {
-        songPlayer(client, guildId,serverQueue.songs[0]);
-    }); 
-}
-
-
-module.exports = {
-	data: new SlashCommandBuilder()
-		.setName('play')
-		.setDescription('Play a song.')
-        .addStringOption(option => option.setName('song').setDescription('Type in a youtube url').setRequired(true)),
-	async execute(interaction, client) {
-        let connection = await getVoiceConnection(interaction.guildId);
-        let interactionChannel = interaction.channel;
-        let channel = interaction.channel;
-        let voiceChannel = interaction.member.voice.channel;
-
-        if(!client.userData.has(interaction.user.id)) {
-            client.userData.set(interaction.user.id, {
-                isSelectingVideo: false
-            })
+            const embed = new MessageEmbed()
+    
+            .setTitle('Now playing')
+            .setDescription(currentSong.title)
+            .setThumbnail(currentSong.thumbnail_url)
+            .setColor('#1B1C31');
+            return interaction.reply({embeds: [embed]});
         }
 
-		if(!voiceChannel) return await interaction.reply('You have to be in a voice channel to use this command.');
 
-        if(connection) {
-            if(connection.joinConfig.channelId != interaction.member.voice.channelId) {
-                return await interaction.reply('You have to be in a voice channel to use this command.');
-            }
-        } else {
-            connection = await joinVoiceChannel({
-                channelId: voiceChannel.id,
-                guildId: voiceChannel.guild.id,
-                adapterCreator: voiceChannel.guild.voiceAdapterCreator
+        if(interaction.options.getSubcommand() === 'queue') {
+            if(!serverQueue) return await interaction.reply('Bot is not playing music.');
+            console.log('queue')
+            const queueEmbed = new MessageEmbed()
+            .setTitle('Song queue:');
+    
+            let queueList = 'Songs in queue:\n';
+            serverQueue.songs.forEach((song, index) => {
+                queueList += `${song.title}\n`;
             });
+            return interaction.reply(queueList);
         }
 
-        const serverQueue = client.guildQueues.get(interaction.guildId);
-        const song = await getSong(interaction, interaction.options.getString('song'));
-        if(!song) return;
 
-
-        if(!serverQueue) {
-
-            const queue = new Queue(client, {
-                connection: connection,
-                player: createAudioPlayer(),
-                voiceChannel: voiceChannel,
-                interactionTextChannel: interactionChannel,
-            });
-
-            queue.addSong(song);
-            client.guildQueues.set(interaction.guildId, queue);
+        if(interaction.options.getSubcommand() === 'shuffle') {
+            if(!serverQueue) return await interaction.reply('Bot is not playing music.');
+            console.log('shuffle')
+            if(serverQueue.songs === 1) return await interaction.reply(`There's only 1 song in the queue.`)
+            serverQueue.shuffle();
+            return interaction.reply('Shuffled queue');
             
-            try {
-                songPlayer(client, interaction.guildId, queue.songs[0]);
-                sendSongEmbed(queue.textChannel,'Added song to the queue', song.title, song.thumbnail_url);
-            } catch(err) {
-                client.guildQueues.delete(interaction.guildId);
-                return channel.send('There was an error connecting!');
+        }
+
+
+
+        if(interaction.options.getSubcommand() === 'radio') {
+            await interaction.deferReply();
+
+            if(!voiceChannel) return await interaction.reply('You have to be in a voice channel to use this command.');
+            
+            if(!voiceChannel) return interaction.reply('You have to be in a voice channel to use this command.');
+            if(interaction.member.voice.channelId == afkChannelId) return  interaction.reply('You cant be in the afk channel.');
+
+            if(!connection) {
+                try {
+                    connection = await joinVoiceChannel({
+                        channelId: interaction.member.voice.channel.id,
+                        guildId: interaction.channel.guild.id,
+                        adapterCreator: interaction.channel.guild.voiceAdapterCreator,
+                    });
+                    interaction.followUp('Connected to your channel.');
+                } catch (err) {
+                    console.warn(err);
+                    interaction.followUp('Something went wrong when trying to connect.')
+                }
+            } else tryToMoveChannel(interaction, connection, serverQueue) 
+
+
+                if(!serverQueue) {
+                    const queue = new Queue({
+                        voiceConnection: connection,
+                        voiceChannel: voiceChannel,
+                        interactionTextChannel: interactionChannel,
+                    });
+                    client.guildQueues.set(interaction.guildId, queue);
+                    try {
+                        
+                        const track = await createRadioTrack('https://lyd.nrk.no/nrk_radio_alltid_nyheter_aac_h', songStateMethods(interaction)); 
+                        queue.enqueue(track);
+                        
+                        // songPlayer(client, interaction.guildId, queue.songs[0]);ø.
+                        const embed = new MessageEmbed()
+
+                        .setTitle('Added song to the queue')
+                        .setDescription(track.title)
+                        .setThumbnail(track.thumbnail_url)
+                        .setColor('#1B1C31');
+                        
+                        return interaction.followUp({embeds: [embed]});
+                        
+
+                    } catch(err) {
+                        console.log(err)
+                        client.guildQueues.delete(interaction.guildId);
+                        return interaction.followUp('There was an error connecting!');
+                    }
+                    
+            } else {
+                // push song to queue    
+                const track = await createRadioTrack('https://listen.moe/opus', songStateMethods(interaction)); 
+
+                serverQueue.enqueue(track);
+                
+                // songPlayer(client, interaction.guildId, queue.songs[0]);ø.
+                const embed = new MessageEmbed()
+
+                .setTitle('Added song to the queue')
+                .setDescription(track.title)
+                .setThumbnail(track.thumbnail_url)
+                .setColor('#1B1C31');
+                
+                return interaction.followUp({embeds: [embed]});
+                
             }
 
-        } else {
-
-            // push song to queue    
-
-            serverQueue.addSong(song);
-
-            sendSongEmbed(serverQueue.textChannel,'Added song to the queue', song.title, song.thumbnail_url);
         }
-	}
-};
+
+        if(interaction.options.getSubcommand() === 'nowplaying') {
+            if(!serverQueue) return await interaction.reply('Bot is not playing music.');
+
+            const currentSong = serverQueue.nowPlaying();
+    
+            const embed = new MessageEmbed()
+    
+            .setTitle('Now playing')
+            .setDescription(currentSong.title)
+            .setThumbnail(currentSong.thumbnail_url)
+
+            .setColor('#1B1C31');
+            return interaction.reply({embeds: [embed]});
+        }
+
+        if(interaction.options.getSubcommand() === 'pause') {
+            if(!serverQueue) return await interaction.reply('Bot is not playing music.');
+
+            serverQueue.pause();
+            return interaction.reply('Paused the music playback');
+        }
+
+        if(interaction.options.getSubcommand() === 'resume') {
+            if(!serverQueue) return await interaction.reply('Bot is not playing music.');
+
+            serverQueue.resume();
+            return interaction.reply('Resumed the music playback');
+        }
+    }
+}
