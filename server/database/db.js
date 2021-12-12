@@ -1,42 +1,49 @@
 
 const { Pool } = require('pg');
 const logger = require('../utils/Logger');
-const dbPool = new Pool({
-	host: process.env.PG_HOST,
-	database: process.env.PG_DB,
-	user: process.env.PG_USER,
-	password: process.env.PG_PASSWORD,
-	port: 5432
-});
 
 class Database {
-
     constructor(pool) {
-        this.pool = pool;
-        this.connection = null;
+        this.pool = new Pool({
+            host: process.env.PG_HOST,
+            database: process.env.PG_DB,
+            user: process.env.PG_USER,
+            password: process.env.PG_PASSWORD,
+            port: 5432
+        });
         this.retries = 5;
         this.retryTimeout = 5000; // How many ms to wait to retry
-        this.connected = false;
-
+        this.pool.on('error', (err) => {throw err});
     }
     
     async connect() {
-        if(this.connected) return;
         while(this.retries > 0) {
             --this.retries
+            try {
+                await this.pool.connect();
 
+
+                return logger.log('Connected to database', '[DATABASE]');
+            } catch(err) {
+                if(this.retries == 0) throw err;
+                logger.error(err);
+                await new Promise((res) => setTimeout(res, this.retryTimeout))
+            }
+        
         }
     }
-    
 
 
-    getCon() {
-        if(!connection) return
-        return this.connection();
+    /**
+     * 
+     * @returns { Pool } pool
+     */
+    getPool() {
+        return this.pool;
     }
     close() {
         this.connection.end();
     }
 }
 
-module.exports = new Database(dbPool);
+module.exports = new Database();

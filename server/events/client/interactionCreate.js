@@ -5,15 +5,23 @@ module.exports = {
 	name: 'interactionCreate',
 	once: false,
 	async execute(interaction, client) {
-		logger.log(`${interaction.user.tag} in #${interaction.channel.name} triggered an interaction.`);
-        if (!interaction.isCommand()) return;
-        if(!client.userStates.get(interaction.user.id)) {
-            client.userStates.set(interaction.user.id, {
-                isCollecting: false
-            })
-        }
+		
+        if(!client.isReady) return interaction.reply({content: 'Bot is still initializing, please wait a few minutes.', ephemeral: true});
+        logger.log(`${interaction.user.tag} in #${interaction.channel.name} triggered an interaction.`);
 
-        if(client.userStates.get(interaction.user.id).isCollecting) return;
+
+
+        if (!interaction.isCommand()) return;
+        // const userStates = client.userStates.get(interaction.user.id);
+        
+        // if(!client.userStates.get(interaction.user.id)) {
+        //     client.userStates.set(interaction.user.id, {
+        //         isCollecting: false
+        //     })
+        // }
+
+
+        // if(client.userStates.get(interaction.user.id).isCollecting) return;
         const command = client.commandHandler.commands.get(interaction.commandName);
         if (!command) return;
     

@@ -1,43 +1,28 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { } = require('ytdl-core-discord');
 const { OpusEncoder } = require('@discordjs/opus');
-const { MessageEmbed } = require('discord.js');
-const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, AudioPlayerStatus, createAudioResource, VoiceConnectionStatus, StreamType} = require('@discordjs/voice');
-const {  } = require('yt-search');
+const { MessageEmbed,VoiceChannel, TextChannel } = require('discord.js');
+const {VoiceConnection, joinVoiceChannel, getVoiceConnection, createAudioPlayer, AudioPlayerStatus, createAudioResource, VoiceConnectionStatus, StreamType} = require('@discordjs/voice');
 const prism = require('prism-media')
-let collectorRunning =  false;
 const http = require('http');
 const ytdl = require('ytdl-core');
-const { CONNREFUSED } = require('dns');
-const { runInThisContext } = require('vm');
-const {Readable} = require('stream');
-
-const stream_1 = __importDefault(require("stream"));
-class LimitedReadWriteStream extends stream_1.default.Transform {
-    constructor(chunkLimit) {
-        super();
-        this.chunkAmount = 0;
-        this.limit = chunkLimit;
-    }
-    _transform(chunk, encoding, done) {
-        if (!this.limit || this.chunkAmount < this.limit)
-            this.push(chunk, encoding);
-        if (this.limit && this.chunkAmount >= this.limit)
-            this.end();
-        this.chunkAmount++;
-        done();
-    }
-}
 
 class Queue {
-    constructor({ voiceConnection, player ,voiceChannel, interactionTextChannel }){
+
+    /**
+     * 
+     * @param {VoiceConnection} voiceConnection
+     * @param {VoiceChannel} voiceChannel 
+     * @param {TextChannel} interactionChannel
+     */
+    constructor(voiceConnection, voiceChannel , interactionChannel){
+
         this.songs = [];
-        this.currentSong = null;
+        this.currentTrack = null;
         this.previousSong = null;
         this.voiceConnection = voiceConnection;
         this.player = createAudioPlayer();
         this.isPlaying = false;
-        this.textChannel = interactionTextChannel;
+        this.textChannel = interactionChannel;
         this.voiceChannel = voiceChannel;
         this.queueLock = false;
         this.volume = 0.1;
@@ -73,16 +58,16 @@ class Queue {
             if(newState.status === AudioPlayerStatus.Idle  && oldState !== AudioPlayerStatus.Idle) {
 
                 (oldState.resource).metadata.onFinish({
-                    url: this.currentSong.url, 
-                    thumbnail_url: this.currentSong.thumbnail_url,
-                    title: this.currentSong.title
+                    url: this.currentTrack.url, 
+                    thumbnail_url: this.currentTrack.thumbnail_url,
+                    title: this.currentTrack.title
                 });
                 this.play();
             } else if (newState.status === AudioPlayerStatus.Playing) {
                 (newState.resource).metadata.onStart({
-                    url: this.currentSong.url, 
-                    thumbnail_url: this.currentSong.thumbnail_url,
-                    title: this.currentSong.title
+                    url: this.currentTrack.url, 
+                    thumbnail_url: this.currentTrack.thumbnail_url,
+                    title: this.currentTrack.title
                 });
             }
         });
@@ -116,14 +101,23 @@ class Queue {
         this.songs = []
         this.player.stop(true);
     }
+    /**
+     * 
+     * @returns {Track} currentTrack
+     */
 
     nowPlaying() {
-        return this.currentSong;
+        return this.currentTrack;
     }
 
-    enqueue(song) {
-        console.log('enqueued')
-        this.songs.push(song)
+    /**
+    *
+    * Adds a track and tries to play it.
+    * @param {Track} track
+    *
+    */
+    enqueue(track) {
+        this.songs.push(track)
         this.play();
     }
 
@@ -142,18 +136,19 @@ class Queue {
         }
 
         this.queueLock = true;
-        this.previousSong = this.currentSong;
-        this.currentSong = this.songs.shift();
+        this.previousSong = this.currentTrack;
+        this.currentTrack = this.songs.shift();
         
         try {
-            const resource = await this.currentSong.createAudioResource();
+            const resource = await this.currentTrack.createAudioResource();
+            resource.volume.setVolume(this.volume);
             this.player.play(resource);
             this.queueLock = false;
 
         } catch(err) {
             console.log(err)
             this.queueLock = false;
-            this.currentSong.onError(err);
+            this.currentTrack.onError(err);
             this.play();
             return this.textChannel.send(err);
         }
@@ -161,7 +156,20 @@ class Queue {
 
 }
 
+
+/**
+ * 
+ * Track class
+ * 
+ * @param {String} url testing testing
+ * @param {String} title testing2
+ * @property {String} Track.url
+ */
 class Track {
+    /**
+     * @param {String} url testing testing
+     * @param {String} title testing2
+     */
     constructor({ url, title, thumbnail_url, timestamp, isYouTube, isSoundCloud, isRadio, onStart, onFinish, onError}) {
         this.url = url;
         this.title = title;
@@ -200,9 +208,6 @@ class Track {
                 // let {Readable} = require('stream');
 
                 // let stream = new Readable;
-
-                
-                
                 
                 let FFmpeg = ["-i", this.url, "-analyzeduration", "0", "-loglevel", "0", "-f", "s16le", "-acodec", "libopus", "-f", "opus", "-ar", "48000", "-ac", "2"];
                 
@@ -210,13 +215,19 @@ class Track {
                     args: FFmpeg
                 });
 
-                return resolve(await createAudioResource(this.url,{metadata: this}))
+                return resolve(await createAudioResource(this.url,{metadata: this, inputType: StreamType.Arbitrary}))
             }
 
         })
     }
 }
 
+/**
+ * 
+ * @param {String} url 
+ * @param {Object<Function>} methods
+ * @returns 
+ */
 async function createYTTrack(url, methods) {
     try {
         const info = await ytdl.getInfo(url);
@@ -266,37 +277,34 @@ async function createSCTrack(url) {
 
 
 async function createRadioTrack(url, methods) {
-    try {
-                
-        const wrappedMethods = {
-            onStart(track) {
-                wrappedMethods.onStart = () => {};
-                methods.onStart(track);
-            },
-            onFinish(track) {
-                wrappedMethods.onFinish = () => {};
-                methods.onFinish(track);
-            },
-            onError(error) {
-                wrappedMethods.onError = () => {};
-                methods.onError(error);
-            },
-        };
-        const track = new Track({
-            url: url,
-            title:  'Radio',
-            thumbnail_url:  '',
-            timestamp: null,
-            isYouTube: false,
-            isSoundCloud: false,
-            isRadio:true,
-            ...wrappedMethods
-        });
-        return track;
-    } catch(err) {
-        console.warn(err);
+                    
+    const wrappedMethods = {
+        onStart(track) {
+            wrappedMethods.onStart = () => {};
+            methods.onStart(track);
+        },
+        onFinish(track) {
+            wrappedMethods.onFinish = () => {};
+            methods.onFinish(track);
+        },
+        onError(error) {
+            wrappedMethods.onError = () => {};
+            methods.onError(error);
+        },
+    };
+    const track = new Track({
+        url: url,
+        title:  'Radio',
+        thumbnail_url:  '',
+        timestamp: null,
+        isYouTube: false,
+        isSoundCloud: false,
+        isRadio:true,
+        ...wrappedMethods
+    });
 
-    }
+
+    return track;
 
 }
 

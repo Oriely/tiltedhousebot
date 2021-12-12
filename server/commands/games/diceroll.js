@@ -25,13 +25,15 @@ module.exports = {
         const bet = interaction.options.getNumber('bet');
         const selectedDiceRoll = interaction.options.getInteger('diceroll');
         if(selectedDiceRoll > 6 || selectedDiceRoll < 1) return interaction.reply('You have to pick a number between 1 and 6');
-
-        // let currentBalance = await economy.balance(messageAuthor);
-        // if(currentBalance - bet < 0) return interaction.reply(`You do not have balance to bet ${bet}, missing ${Math.abs(currentBalance - bet)}`)
+        const userData = client.dbCache.users.get(messageAuthor);
+        const guildData = client.dbCache.guilds.get(interaction.guild.id);
         
-        // await economy.subtract(messageAuthor, bet);
+        let currentBalance = userData.data.economy.balance;
 
-        // currentBalance = await economy.balance(messageAuthor);
+        if(currentBalance - bet < 0) return interaction.reply(`You do not have balance to bet ${bet}, missing ${Math.abs(currentBalance - bet)}`)
+        
+        
+        currentBalance = userData.data.economy.balance -= bet;
 
         const roll = Math.round(Math.random() * 5) + 1;
         const diceEmbed = diceEmbeds[roll - 1].attachment;
@@ -43,17 +45,20 @@ module.exports = {
             .setDescription(`Current balance: ${currentBalance}`)
             .setThumbnail(`attachment://${roll}.png`);
 
-            // await economy.add(messageAuthor, bet * 6);
+            userData.data.economy.balance += bet * 6;
 
-            return interaction.channel.send({ embeds: [embed], files:[diceEmbed]});
+            
+
+            interaction.channel.send({ embeds: [embed], files:[diceEmbed]});
         } else {
             const embed = new MessageEmbed()
             .setTitle(`You bet ${bet} on ${selectedDiceRoll} and lost.`)
             .setDescription(`Current balance: ${currentBalance}`)
             .setThumbnail(`attachment://${roll}.png`);
-
-            return interaction.channel.send({ embeds: [embed], files:[diceEmbed]});
+            
+            interaction.channel.send({ embeds: [embed], files:[diceEmbed]});
         }
-  
+        
+        userData.save(client);
     },
 };

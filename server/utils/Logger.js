@@ -11,17 +11,21 @@ class Logger {
         return new Date().toLocaleString();
     }
     
-    error(error) {
-        return console.error(`${chalk.red('[ERROR]')}[${this.currentTime()}]: ${error}`);
+    error(error, from) {
+        from = from || '';
+        return console.error(`${chalk.red('[ERROR]')}${from}[${this.currentTime()}]: ${error}`);
     }
-    warn(warning) {
-        return console.warn(`${chalk.yellow('[WARN]')}[${this.currentTime()}]: ${warning}`);
+    warn(warning, from) {
+        from = from || '';
+        return console.warn(`${chalk.yellow('[WARN]')}${from}[${this.currentTime()}]: ${warning}`);
     }
-    log(text) {
-        return console.log(`${chalk.white('[LOG]')}[${this.currentTime()}]: ${text}`);
+    log(text,from) {
+        from = from || '';
+        return console.log(`${chalk.white('[LOG]')}${from}[${this.currentTime()}]: ${text}`);
     }
-    info(info) {
-        return console.info(`${chalk.white('[INFO]')}[${this.currentTime()}]: ${info}`);
+    info(info, from) {
+        from = from || '';
+        return console.info(`${chalk.white('[INFO]')}${from}[${this.currentTime()}]: ${info}`);
     }
     
 }

@@ -56,4 +56,4 @@ services:
       POSTGRES_USER: tiltedbot
       POSTGRES_PASSWORD: postgres
     volumes:
-      - ./postgresql/data:/var/lib/postgresql/data
+      - ./postgresql:/var/lib/postgresql/data

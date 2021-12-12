@@ -1,6 +1,6 @@
 // const db = require('../database/db');
 
-// class Economy {
+// class Bank {
 //     costructor(db) {
 
 //     }
@@ -10,11 +10,10 @@
 //             db.connection.query(`
 //                     UPDATE Users SET balance = balance + ${amount}
 //                     WHERE userId = '${userId}'
-//                 `)
-//             .then(resolve(true))
-//             .catch((err) => {
-//                 reject(err);
-//             });
+//                 `, (err, res) => {
+//                     if(err) reject(err);
+
+//                 });
 //         }) 
 //     }
 
@@ -24,32 +23,33 @@
 //             if(currentBalance - amount < 0) reject('Not enough balance'); 
 //             db.connection.query(`UPDATE Users SET balance = balance - ${amount} WHERE userId = '${userId}'`, (err, res) => {
 //                 if(err) {
-
+//                     return reject(err);
 //                 }
+//                 return res.ro
 //             })
             
 //         });
 //     }
 
-//     async balance(userId) {
+//     async balance(userId) { 
 //         return new Promise(async (resolve, reject) => {
-//             try{
-//                 const currentBalance = await db.connection.query(`SELECT balance FROM Users WHERE userId = '${userId}'`);
-//                 if(!currentBalance.rows.length === 0) reject(false);
-//                 resolve(currentBalance.rows[0].balance);
-//             } catch(error) {
-//                 reject(error);
-//             }
+//             db.connection.query(`SELECT balance FROM Users WHERE userId = '${userId}'`, (err, res) => {
+//                 if(err) {
+//                     console.log(err);
+//                     return 0;
+//                 }
+                
+//             })
 //         });
 //     }
 
 //     checkIfUserExists() {
 //         return new Promise( async (resolve, reject) => {
-//             db.connection.query(`SELECT balance FROM Users WHERE userId = '${userId}'`)
-//             .then()
-//             .catch((err) => {
-//                 reject(console.log(err));
-//             });
+//             db.connection.query(`SELECT balance FROM Users WHERE userId = '${userId}'`, (err, res) => {
+//                 if(err) throw new Error(err);
+                
+//             })
+         
 //         })
 //     }
 // }

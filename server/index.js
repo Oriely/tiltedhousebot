@@ -1,17 +1,14 @@
+require('dotenv').config({path: '.env.local'});
+const config = require('./config');
 const { Client, Intents, Collection } = require('discord.js');
-const fs = require('fs');
 const express = require('express');
 const app_api = express();
 const CommandHandler = require('./functions/commandHandler');
 const EventHandler  = require('./functions/eventHandler');
-const logger = require('./utils/Logger');
-require('dotenv').config({path: '.env.local'});
+const db = require('./database/db');
+const TiltedBotClient = require('./includes/TiltedBot');
 
-const token = process.env.NODE_ENV == "production" ? process.env.TOKEN : process.env.TEST_BOT_TOKEN;
-const guildId = process.env.GUILD_ID
-const clientId = process.env.NODE_ENV == "production" ? process.env.CLIENT_ID : process.env.TEST_BOT_CLIENT_ID;
-
-const client = new Client({
+const client = new TiltedBotClient({
 	intents: [
 		Intents.FLAGS.GUILDS,
 		Intents.FLAGS.GUILD_MESSAGES,
@@ -21,29 +18,35 @@ const client = new Client({
 	],
 	partials: ['MESSAGE', 'CHANNEL', 'REACTION']
 });
-client.commandHandler = new CommandHandler();
+
+client.logger = require('./utils/Logger');
+client.commandHandler = new CommandHandler({
+	token: config.token,
+	guildId: config.guildId,
+	clientId: config.clientId
+});
 client.eventHandler = new EventHandler();
 client.guildQueues = new Map();
 client.userData = new Map();
 client.userStates = new Map();
-
-
-const events = fs.readdirSync('./events').filter(file => file.endsWith('.js'));
-
+client.dbCache = {
+	guilds: new Collection(),
+	users: new Collection()
+};
 
 (async () => {
+
+	client.isReady = false;
+
+	await db.connect();
+
+	client.db = db.getPool();
 
 	client.commandHandler
 	.setCommandsFolder(__dirname+'/commands')
 	.getCategories()
-	.getCommands();
-
-	client.commandHandler
-	.registerSlashCommands({
-		token: token,
-		guildId: guildId,
-		clientId: clientId
-	});
+	.getCommands()
+	.registerSlashCommands();
 
 	client.eventHandler
 	.setEventsFolder(__dirname+'/events')
@@ -53,10 +56,10 @@ const events = fs.readdirSync('./events').filter(file => file.endsWith('.js'));
 	client.eventHandler
 	.handle(client);
 
-
 	app_api.listen(process.env.PORT, () => {
-		logger.log('API Listening on port ' + process.env.PORT)
+		client.logger.log('API Listening on port ' + process.env.PORT)
 	});
 
-	client.login(token);
+	client.login(config.token);
+
 })();

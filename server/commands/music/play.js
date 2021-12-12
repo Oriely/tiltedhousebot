@@ -61,7 +61,7 @@ async function sendSongEmbed( textChannel,title, desc, thumb ) {
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('musicplayer')
+		.setName('player')
 		.setDescription('Used to play music.')
         .addSubcommand(subcommand =>
             subcommand
@@ -113,6 +113,9 @@ module.exports = {
                 .setDescription('Resume the music player.'))
         ,
 	async execute(interaction, client) {
+        console.log(this.data);
+        if(!voiceChannel) return interaction.reply('You have to be in a voice channel to use this command.');
+
         let connection = getVoiceConnection(interaction.guildId);
         let interactionChannel = interaction.channel;
         let channel = interaction.channel;
@@ -121,7 +124,7 @@ module.exports = {
         const { afkChannelId }= await interaction.guild.channels.guild;
 
         if(interaction.options.getSubcommand() === 'connect') {
-             
+            
             if(interaction.member.voice.channelId == afkChannelId) return  interaction.reply('You cant be in the afk channel.');
             
             if(!connection) {
@@ -143,8 +146,6 @@ module.exports = {
         if(interaction.options.getSubcommand() === 'yt') {
             
             await interaction.deferReply();
-            
-            if(!voiceChannel) return interaction.reply('You have to be in a voice channel to use this command.');
             if(interaction.member.voice.channelId == afkChannelId) return  interaction.reply('You cant be in the afk channel.');
             
             if(!connection) {
@@ -159,12 +160,10 @@ module.exports = {
                     console.warn(err);
                     interaction.followUp('Something went wrong when trying to connect.')
                 }
-            } else tryToMoveChannel(interaction, connection, serverQueue) 
-
-            let YouTubeURLRegEx = new RegExp('^(https?\:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$');
+            } else tryToMoveChannel(interaction, connection, serverQueue);
             let url = interaction.options.getString('yturl');
-
-            if(!ytdl.validateURL(url) && !YouTubeURLRegEx.test(url)) return interaction.reply('Not a valid youtube link.')
+            
+            if(!ytdl.validateURL(url) && url.matches(/^(https?\:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/)) return interaction.reply('Not a valid youtube link.')
             
             if(!serverQueue) {
                 const queue = new Queue({
@@ -207,8 +206,6 @@ module.exports = {
 
 
         if(interaction.options.getSubcommand() === 'search') {
-           
-            if(!voiceChannel) return interaction.reply('You have to be in a voice channel to use this command.');
             if(interaction.member.voice.channelId == afkChannelId) return  interaction.reply('You cant be in the afk channel.');
 
             if(!connection) {
@@ -224,6 +221,8 @@ module.exports = {
                     interaction.followUp('Something went wrong when trying to connect.')
                 }
             } else tryToMoveChannel(interaction, connection, serverQueue) 
+            
+            if(connection.joinConfig.channelId != voiceChannel.id) return interaction.reply('You have to be in the same channel as me.');
 
             const searchQuery = interaction.options.getString('query');
 
@@ -241,38 +240,37 @@ module.exports = {
                 .setColor('#1B1C31');
 
                 let selectedVideo = null;
-                const filter = response => {
-                    return videos.some((video, index) => {
-                        if(index == parseInt(response.content) -1){
+                const filter = response => videos.some((video, index) => {
+                    if(parseInt(response.content) === index && response.member.id == interaction.member.id) {
+                        console.log(response.member.id, interaction.member.id);
                         selectedVideo = index;
-                            return true;
-                        }   
-                        return false;
-                    });
-                };
+                        return true;
+                    }
+                });
 
 
                 // TODO fix bug where you are able to use play command again before collector is finished
                 client.userStates.get(interaction.user.id).isCollecting = true;
-                console.log('testbefore')
                 interaction.reply({embeds:[selectVideoEmbed], code:'js'}, { fetchReply: true }).then(() => {
                     interaction.channel.awaitMessages({ filter, max: 1, time: 10000, errors: ['time'] })
                         .then(async collected => {
                             if(!serverQueue) {
-                                try {
-                                    const queue = new Queue({
-                                        voiceConnection: connection,
-                                        voiceChannel: voiceChannel,
-                                        interactionTextChannel: interactionChannel,
-                                    });
-                                    client.guildQueues.set(interaction.guildId, queue);
 
+                                const queue = new Queue({
+                                    voiceConnection: connection,
+                                    voiceChannel: voiceChannel,
+                                    interactionTextChannel: interactionChannel,
+                                });
+                                client.guildQueues.set(interaction.guildId, queue);
+                                
+                                try {
+                                    
                                     const track = await createYTTrack(videos[selectedVideo].url, songStateMethods(interaction));
                                     queue.enqueue(track);
                                     
                                     // songPlayer(client, interaction.guildId, queue.songs[0]);ø.
                                     const embed = new MessageEmbed()
-
+                                    
                                     .setTitle('Added song to the queue')
                                     .setDescription(track.title)
                                     .setThumbnail(track.thumbnail_url)
@@ -280,8 +278,9 @@ module.exports = {
                                     
                                     return interaction.followUp({embeds: [embed]});
                                     
-          
+                                    
                                 } catch(err) {
+                                    console.log(err)
                                     client.guildQueues.delete(interaction.guildId);
                                     return interaction.followUp('There was an error connecting!');
                                 }
@@ -316,7 +315,6 @@ module.exports = {
         }
 
         if(interaction.options.getSubcommand() === 'skip') {
-            if(!voiceChannel) return interaction.reply('You have to be in a voice channel to use this command.');
             if(connection.joinConfig.channelId != voiceChannel.id) return interaction.reply('You have to be in the same channel as me.');
             if(!serverQueue) return await interaction.reply('Bot is not playing music.');
             
@@ -370,9 +368,6 @@ module.exports = {
 
         if(interaction.options.getSubcommand() === 'radio') {
             await interaction.deferReply();
-
-            if(!voiceChannel) return await interaction.reply('You have to be in a voice channel to use this command.');
-            
             if(!voiceChannel) return interaction.reply('You have to be in a voice channel to use this command.');
             if(interaction.member.voice.channelId == afkChannelId) return  interaction.reply('You cant be in the afk channel.');
 

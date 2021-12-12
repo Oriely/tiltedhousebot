@@ -1,28 +1,27 @@
+
 const fs = require('fs');
 const { Pool } = require('pg');
 const db = require('./db');
 
-const client = new Pool({
-    host: localhost,
-	database: process.env.PG_DB,
-	user: process.env.PG_USER,
-	password: process.env.PG_PASSWORD,
-	port: 5432
-});
-
 (async() => {
 
+    db.pool = new Pool({
+        host: 'localhost',
+        database: 'tiltedbot',
+        user: 'tiltedbot',
+        password: 'postgres',
+        port: 5432
+    });
+    const sqlFile = fs.readFileSync('./structure.sql');
     
-    const structure = fs.readFileSync('./structure.sql');
+    const sql = sqlFile.toString();
 
-    await db.tryconnect();
+    console.log(sql);
+    await db.connect();
 
-    db.connection.query('',() => {
-
+    db.pool.query(sql)
+    .then((res) => {
+        console.log(res)
     })
-
-
-    await db.close();
-
-
+    .catch(console.log);
 })();

@@ -7,11 +7,14 @@ module.exports = {
 	async execute(message, client) {
         const currencyGainPerMessage = 10;
         const messageAuthor = message.author.id;
-        try {
-            // economy.add(messageAuthor, currencyGainPerMessage);
-            console.log(`${currencyGainPerMessage} got added to ${messageAuthor}`)
-        } catch(error) {
-            console.log(error);
+        
+        if(!message.author.bot) {
+            const userData = client.dbCache.users.get(messageAuthor)
+            console.log(userData)
+
+            userData.data.economy.balance += Math.round(Math.random() * 5) + 1;
+            userData.data.stats.experience += Math.round(Math.random() * 50) + 1;
+            console.log(userData.data.economy.balance)  
         }
 	},
 };
